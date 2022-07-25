@@ -177,4 +177,41 @@ Adicionalmente podemos configurar um consumo maximo de recursos do pod via "reso
 Para adicionar um volume a um manifesto de pod, há duas novas estrofes para adicionar à nossa configuração. A primeira é uma nova seção spec.volumes. Essa matriz define todos os volumes que podem ser acessados por contêineres no manifesto do pod. É importante observar que nem todos os contêineres precisam montar todos os volumes definidos no Pod. A segunda adição é a matriz volumeMounts na definição do contêiner. Essa matriz define os volumes que são montados em um contêiner específico e o caminho em que cada volume deve ser montado. Observe que dois contêineres diferentes em um pod podem montar o mesmo volume em caminhos de montagem diferentes.
 
 
+## Diferentes formas de usar volumes em pods
+
+Existe uma grande variedade de formas que pode-se usar dados em sua aplicação. A seguir temos algmas
+
+### Comunicação e sincronização
+
+Como no exemplo do sidecar do git com o nginx. O pod usa um volume chamado "emptyDir". Esse volume tem como escopo a vida útil do Pod, mas pode ser compartilhado entre dois contêineres, formando a base para a comunicação entre nossa sincronização do Git e contêineres de serviço da Web.
+
+### Cache
+
+Uma aplicação pode usar um volume valioso para desempenho, mas não necessaria para a correta oeração do aplicativo. Por exemplo, talvez a aplicação mantenha miniaturas pré-renderizada de imagens maiores. Claro, eles podem ser reconstruidos a partir das originais, mais eles fazem o serviço de miniaturas mais custoso. Pode-se desejar que esse cache sobreviva a uma reinicialização do container devido a uma falha de verificação de integridade e, portanto esse volume tambem funciona bem para  o caso de uso de cache.
+
+### Dados persistentes.
+
+As vezes usaremos volumes para dados realmente persistentes - dados que são independentes da vida útil de um pod em particular, e devemos mover entre nos no cluster, se um node falhar ou mover um pod para uma maquina diferente por alguma razão. Para alcançar isso, k8s suportas uma grande variedade de volume de armazenamento de redes remotas, incluindo suporte a uma grande variedade de protocolos como NFS  e  iSCSI, bem como redes de provedores de armazenamento em nuvem como amazon, azure e google.
+
+### Sistema de arquivos montado do host.
+
+Outras aplicações não necessitam de um volume persistente, mas eles preciam de um acesso aos sistemas de arquivos do host subjacente. Por exemplo, eles podem precisar acessar o arquivo de sistema /dev para executar o acesso a raw block-level para uma disposito no sistema. Para estecaso , o k8s oferece suporte ao volume  hostpath, que pode montar locais arbitrarios no no do worker do container. O exemplo anterior usa um tipo de hostPath. O volume é criado em /var/lib/kuard no host.
+
+### Dados persistentes usando discos remotos.
+
+Muitas vezes, queremos que um dado que o pod esteja utilizando pemaneça em um pod mesmo se ele for resetado em uma maquina host diferente.
+
+Para conseguir isso, podemos montar um volume de armazenamento de rede remota em seu pod. Quando usamos um armazenamento baseado em redes, o k8s automaticamente mounta e desmonta um armazemando de rede apropriado sempre que um pod que usa esse volume é agendado em uma maquina especifica. 
+
+Existem vários métodos para montar volumes pela rede. O k8s inclue suporte para protocolos padrão como NFS e iSCSI, bem como APIs de armazenamento baseadas em provedor de nuvem para os principais provedores de nuvem publica e privada. Em muitos casos, os provedores de nuvem tambem criarão o disco para voce, caso ele ainda não exista.
+
+Volumes persistentes são um assunto profundo que tem muitos detalhes diferentes: em particular, a maneira como os volumes persistentes, as declarações de volumes persistentes e o provisionamento de volumes dinamicos funcionam juntos. cap-15.
+
+## Colocando tudo junto.
+
+Muitos aplicativos são stateful e, como tal, devemos preservar todos os dados e garantir o acesso ao volume de armazenamento subjacente, independentemente da máquina em que o aplicativo é executado. Como vimos anteriormente, isso pode ser feito usando um volume persistente apoiado por armazenamento conectado à rede. Também queremos garantir que uma instância íntegra do aplicativo esteja em execução o tempo todo, o que significa que queremos garantir que o contêiner executando o kuard esteja pronto antes de expô-lo aos clientes.
+Por meio de uma combinação de volumes persistentes, testes de prontidão e atividade e restrições de recursos, o Kubernetes fornece tudo o que é necessário para executar aplicativos com estado de maneira confiável.
+
+
+
 
