@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard
+spec:
+  containers:
+    - image: gcr.io/kuar-demo/kuard-amd64:blue
+      name: kuard
+      resources: #Esta parte que controla os gastos  e reserva de recursos
+        requests: 
+          cpu: "500m"
+          memory: "128Mi"
+      ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP   

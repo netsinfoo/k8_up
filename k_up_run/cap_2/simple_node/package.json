@@ -1,0 +1,13 @@
+{
+"name": "simple-node",
+"version": "1.0.0",
+"description": "Um exemplo de um aplicativo simples para k8's",
+"main": "server.js",
+"scripts": {
+	"start": "node server.js"
+},
+"dependencies": { 
+	"express": "^4.16.1"
+},
+"author": "Maneo"
+}
