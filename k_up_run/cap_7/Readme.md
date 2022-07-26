@@ -41,3 +41,4 @@ A maneira mais portátil de fazer isso é usar um recurso chamado NodePorts, que
 Com esse recurso, se você puder acessar qualquer nó do cluster, poderá entrar em contato com um serviço. Você usa o NodePort sem saber onde qualquer um dos pods desse serviço está sendo executado. Isso pode ser integrado a balanceadores de carga de hardware ou software para expor ainda mais o serviço.
 
 
+Continua . . . 
