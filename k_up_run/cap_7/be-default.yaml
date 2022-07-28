@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: be-default
+  labels:
+    app: be-default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: be-default 
+  template:
+    metadata:
+      labels:
+        app: be-default
+        ver: "1"
+    spec:
+      containers:
+      - image: gcr.io/kuar-demo/kuard-amd64:blue
+        name: kuard-amd64
+        ports:
+        - containerPort: 8080

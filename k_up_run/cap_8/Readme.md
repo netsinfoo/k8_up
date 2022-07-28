@@ -47,3 +47,5 @@ O minikube tunnel é executado como um processo, criando uma rota de rede no hos
 Para que o Ingress funcione bem, você precisa configurar as entradas DNS para o endereço externo do seu balanceador de carga. Você pode mapear vários nomes de host para um único ponto de extremidade externo e o controlador do Ingress reproduzirá o policial de tráfego e direcionará as solicitações recebidas para o serviço upstream apropriado com base nesse nome de host.
 
 Supomos que você tenha um domínio chamado example.com . Você precisa configurar duas entradas DNS: alpaca.example.com e bandicoot.example.com . Se você tiver um endereço IP para seu balanceador de carga externo, convém criar registros A. Se você tiver um nome de host, convém configurar os registros CNAME.
+
+
