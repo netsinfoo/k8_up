@@ -48,4 +48,45 @@ Para que o Ingress funcione bem, você precisa configurar as entradas DNS para o
 
 Supomos que você tenha um domínio chamado example.com . Você precisa configurar duas entradas DNS: alpaca.example.com e bandicoot.example.com . Se você tiver um endereço IP para seu balanceador de carga externo, convém criar registros A. Se você tiver um nome de host, convém configurar os registros CNAME.
 
+Nessa configuração, usando o minikube, devemos registrar os endereços das aplicações no /etc/hosts.
+
+
+## Usando o INGRESS
+
+Vamos subir nossos deploymentes alpaca, bandicoot e be-default.
+
+### Forma mais simples de ser usada.
+
+obs: é importante lembrar que o v1beta1 não é usado. Dessa forma vamos mudar o arquivo sugerido no livro para:
+
+	apiVersion: networking.k8s.io/v1
+	kind: Ingress
+	metadata:
+  		name: be-default-ingress
+	spec:
+  		defaultBackend:
+    			service:
+      				name: be-default-prod
+     					port: 
+        				number: 8080  # Com essa mudança o atributo port vira um map, sendo descrito assim.
+
+
+### Usando hostnames.
+
+
+As coisas começam a ficar interessantes quando começamos a direcionar o tráfego com base nas propriedades da solicitação. O exemplo mais comum disso é fazer com que o sistema Ingress examine o cabeçalho do host HTTP (que é definido para o domínio DNS na URL original) e direcione o tráfego com base nesse cabeçalho.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
