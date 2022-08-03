@@ -76,6 +76,96 @@ obs: é importante lembrar que o v1beta1 não é usado. Dessa forma vamos mudar 
 
 As coisas começam a ficar interessantes quando começamos a direcionar o tráfego com base nas propriedades da solicitação. O exemplo mais comum disso é fazer com que o sistema Ingress examine o cabeçalho do host HTTP (que é definido para o domínio DNS na URL original) e direcione o tráfego com base nesse cabeçalho.
 
+	apiVersion: extensions/v1beta1
+	kind: Ingress
+	metadata:
+		name: host-ingress
+	spec:
+		rules:
+			- host: alpaca.example.com
+			  http:
+				paths:
+					- backend:
+					  serviceName: alpaca
+					  servicePort: 8080
+
+
+
+$ kubectl describe ingress host-ingress
+Name:
+host-ingress
+Namespace:
+default
+Address:
+Default backend: default-http-backend:80 (<none>)
+Rules:
+Host
+Path Backends
+----
+---- --------
+alpaca.example.com
+/
+alpaca:8080 (<none>)
+Annotations:
+...
+Events:
+<none>
+
+
+Há algumas coisas que são um pouco confusas aqui. Primeiro, há uma referência ao default-http-backend . Essa é uma convenção que apenas alguns controladores Ingress usam para lidar com solicitações que não são tratadas de outra maneira. Esses controladores enviam essas solicitações para um serviço chamado default-http-backend no namespace kube-system. Esta convenção é exibida no lado do cliente no kubectl
+
+
+### Usando paths
+
+
+Quando há vários caminhos no mesmo host listados no sistema Ingress, o prefixo mais longo corresponde. Assim, neste exemplo, o tráfego que começa com /a/ é encaminhado para o serviço alpaca, enquanto todos os outros tráfegos (começando com / ) são direcionados para o serviço bandicoot. 
+
+À medida que as solicitações são encaminhadas para o serviço upstream, o caminho permanece inalterado. Isso significa que uma solicitação para bandicoot.example.com/a/ aparece no servidor upstream configurado para esse nome de host e caminho de solicitação. O serviço upstream precisa estar pronto para servir o tráfego nesse subcaminho. Nesse caso, o kuard possui um código especial para teste, onde responde no caminho raiz ( / ) junto com um conjunto predefinido de subcaminhos ( / a/ , /b/ e /c/ ).
+
+## Tópicos e truques avançados do Ingress
+
+Existem alguns outros recursos sofisticados que são suportados pelo Ingress. O nível de suporte para esses recursos difere com base na implementação do controlador Ingress, e dois controladores podem implementar um recurso de maneiras ligeiramente diferentes. Muitos dos recursos estendidos são expostos por meio de anotações no objeto Ingress. Tenha cuidado, pois essas anotações podem ser difíceis de validar e são fáceis de errar. Muitas dessas anotações se aplicam a todo o objeto Ingress e, portanto, podem ser mais gerais do que você gostaria. Para reduzir o escopo das anotações, você sempre pode dividir um único objeto Ingress em vários objetos Ingress. O controlador Ingress deve lê-los e mesclá-los.
+
+### Rodando multiplos controladores ingress
+
+Muitas vezes, você pode querer executar vários controladores do ingress em um único cluster. Nesse caso, você especifica qual objeto Ingress destina-se a qual controlador Ingress usando a anotação kubernetes.io/ingress.class. O valor deve ser uma string que especifica qual controlador do Ingress deve examinar este objeto. Os próprios controladores Ingress, então, devem ser configurados com essa mesma string e devem respeitar apenas os objetos Ingress com a anotação correta. 
+
+Se a anotação kubernetes.io/ingress.class estiver ausente, o comportamento será indefinido. É provável que vários controladores lutem para satisfazer o Ingress e gravar o campo de status dos objetos Ingress.
+
+### Multiplos objetos ingress
+
+Se você especificar vários objetos Ingress, os controladores Ingress deverão lê-los todos e tentar mesclá-los em uma configuração coerente. No entanto, se você especificar configurações duplicadas e conflitantes, o comportamento é indefinido. É provável que diferentes controladores Ingress se comportem de forma diferente. Mesmo uma única implementação pode fazer coisas diferentes dependendo de fatores não óbvios.
+
+### Ingress e namespaces
+
+O Ingress interage com namespaces de algumas maneiras não óbvias. 
+
+Primeiro, devido a uma abundância de cuidados de segurança, um objeto Ingress só pode se referir a um serviço upstream no mesmo namespace. Isso significa que você não pode usar um objeto Ingress para apontar um subcaminho para um serviço em outro namespace. 
+
+No entanto, vários objetos Ingress em diferentes namespaces podem especificar subcaminhos para o mesmo host. Esses objetos Ingress são então mesclados para criar a configuração final do controlador Ingress.
+
+Esse comportamento entre namespaces significa que é necessário que o Ingress seja coordenado globalmente no cluster. Se não for coordenado com cuidado, um objeto Ingress em um namespace pode causar problemas (e comportamento indefinido) em outros namespaces. Normalmente, não há restrições embutidas no controlador Ingress sobre quais namespaces têm permissão para especificar quais nomes de host e caminhos. Os usuários avançados podem tentar impor uma política para isso usando um controlador de admissão personalizado.
+
+### Reescrita de caminho
+
+Algumas implementações do controlador Ingress suportam, opcionalmente, a reescrita de caminho. Isso pode ser usado para modificar o caminho na solicitação HTTP à medida que ela é submetida a proxy. Isso geralmente é especificado por uma anotação no objeto Ingress e se aplica a todas as solicitações especificadas por esse objeto. Por exemplo, se estivéssemos usando o controlador NGINX Ingress, poderíamos especificar uma anotação de nginx.ingress.kubernetes.io/rewrite-target: / . Às vezes, isso pode fazer com que os serviços upstream funcionem em um subcaminho, mesmo que não tenham sido criados para isso. 
+
+Existem várias implementações que não apenas implementam a reescrita de caminho, mas também suportam expressões regulares ao especificar o caminho. Por exemplo, o controlador NGINX permite que expressões regulares capturem partes do caminho e usem esse conteúdo capturado ao reescrever. Como isso é feito (e qual variante de expressões regulares é usada) é específica da implementação. A reescrita de caminho não é uma bala de prata, e muitas vezes pode levar a erros. Muitos aplicativos da Web supõem que podem se vincular usando caminhos absolutos. Nesse caso, o aplicativo em questão pode estar hospedado em /subpath, mas as solicitações aparecem em / . Ele pode então enviar um usuário para /app-path . Há então a questão de saber se esse é um link “interno” para o aplicativo (nesse caso, deve ser /subpath/app-path) ou um link para algum outro aplicativo. Por esta razão, provavelmente é melhor evitar subcaminhos se você puder ajudá-lo em aplicações complicadas.
+
+###    Servindo TLS
+
+Ao servir sites, está se tornando cada vez mais necessário fazê-lo com segurança usando TLS e HTTPS. O Ingress suporta isso (assim como a maioria dos controladores Ingress). 
+
+Primeiro, os usuários precisam especificar um secret com seu certificado e chaves TLS . Você também pode criar um secret imperativamente com kubectl create secret tls <secret-name> --cert <certificate-pem-file> -- key <private-key-pem-file>
+ 
+ Depois de fazer upload do certificado, você pode referenciá-lo em um objeto Ingress. Isso especifica uma lista de certificados junto com os nomes de host para os quais esses certificados devem ser usados. Novamente, se vários objetos Ingress especificarem certificados para o mesmo nome de host, o comportamento será indefinido.
+
+
+
+
+
+ 
+
 
 
 
